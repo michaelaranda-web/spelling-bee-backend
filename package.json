@@ -11,6 +11,7 @@
   "dependencies": {
     "axios": "^0.19.0",
     "moment": "^2.24.0",
+    "mongodb": "^3.3.4",
     "node-resque": "^6.0.3"
   }
 }

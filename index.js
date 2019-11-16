@@ -3,18 +3,43 @@ const axios = require('axios');
 const moment = require('moment');
 const { parsePuzzleData } = require('./src/helpers/puzzleDataParser');
 
-const currentDay = moment().format('YYYYMMDD');
-console.log(currentDay);
-
-const fetchAndStorePuzzle = (date) => {
+const fetchAndStorePuzzle = (date, db) => {
+  // const currentDay = moment().format('YYYYMMDD');
+  
   axios.get(`https://nytbee.com/Bee_${date}.html`)
     .then((response) => {
       const puzzleHTML= response.data;
-      console.log(parsePuzzleData(puzzleHTML));
+      const puzzleData = parsePuzzleData(puzzleHTML);
+      
+      db.collection('puzzles').insertOne(puzzleData, function(err, r) {
+        assert.equal(null, err);
+        assert.equal(1, r.insertedCount);
+      });
     });
 }
 
-async function boot() {
+const MongoClient = require('mongodb').MongoClient;
+const assert = require('assert');
+
+// Connection URL
+const url = 'mongodb://localhost:27017';
+
+// Database Name
+const dbName = 'spelling-bee';
+
+// Use connect method to connect to the server
+MongoClient.connect(url, function(err, client) {
+  assert.equal(null, err);
+  console.log("Connected successfully to server");
+
+  const db = client.db(dbName);
+  
+  boot(db);
+
+  // client.close();
+});
+
+async function boot(db) {
   // ////////////////////////
   // SET UP THE CONNECTION //
   // ////////////////////////
@@ -38,7 +63,7 @@ async function boot() {
  
   const jobs = {
     puzzleFetchAndStore: {
-      perform: (date) => fetchAndStorePuzzle(date)
+      perform: (date) => fetchAndStorePuzzle(date, db)
     },
   };
  
@@ -151,4 +176,4 @@ async function boot() {
   jobsToComplete = 1;
 }
  
-boot();
+// boot();
