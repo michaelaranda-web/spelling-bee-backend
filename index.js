@@ -3,10 +3,10 @@ const axios = require('axios');
 const moment = require('moment');
 const { parsePuzzleData } = require('./src/helpers/puzzleDataParser');
 
-const fetchAndStorePuzzle = (date, db) => {
-  // const currentDay = moment().format('YYYYMMDD');
+const fetchAndStorePuzzle = (db) => {
+  const currentDay = moment().format('YYYYMMDD');
   
-  axios.get(`https://nytbee.com/Bee_${date}.html`)
+  axios.get(`https://nytbee.com/Bee_${currentDay}.html`)
     .then((response) => {
       const puzzleHTML= response.data;
       const puzzleData = parsePuzzleData(puzzleHTML);
@@ -14,7 +14,16 @@ const fetchAndStorePuzzle = (date, db) => {
       db.collection('puzzles').insertOne(puzzleData, function(err, r) {
         assert.equal(null, err);
         assert.equal(1, r.insertedCount);
+        
+        console.log(`Successfully saved puzzle data for ${puzzleData.puzzleDate}`);
       });
+    })
+    .catch((error) => {
+      if (error.status === 404) {
+        console.log(`Could not find puzzle for ${currentDay}`)
+      } else {
+        console.log(error.message);
+      }
     });
 }
 
@@ -63,7 +72,7 @@ async function boot(db) {
  
   const jobs = {
     puzzleFetchAndStore: {
-      perform: (date) => fetchAndStorePuzzle(date, db)
+      perform: () => fetchAndStorePuzzle(db)
     },
   };
  
@@ -172,8 +181,6 @@ async function boot(db) {
     console.log(error);
   });
   await queue.connect();
-  await queue.enqueue("puzzles", "puzzleFetchAndStore", ["20191111"]);
+  await queue.enqueue("puzzles", "puzzleFetchAndStore", []);
   jobsToComplete = 1;
 }
- 
-// boot();

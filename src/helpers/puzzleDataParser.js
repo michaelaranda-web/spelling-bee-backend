@@ -15,13 +15,15 @@ const parsePuzzleData = (puzzleHTML) => {
   const centerLetter = getCenterLetter(validWords, puzzleLetters);
   const outerLetters = getOuterLetters(centerLetter, puzzleLetters);
   
-  const pointsNeededForGenius = getPointsNeededForGenius(puzzleHTML);
-  
   return {
+    puzzleDate: getPuzzleDate(puzzleHTML),
     validWords: validWords,
     centerLetter: centerLetter,
     outerLetters: outerLetters,
-    pointsNeededForGenius: pointsNeededForGenius,
+    pointsNeededForGenius: getPointsNeededForGenius(puzzleHTML),
+    maximumPuzzleScore: getMaximumPuzzleScore(puzzleHTML),
+    numberOfAnswers: getNumberOfAnswers(puzzleHTML),
+    numberOfPangrams: getNumberOfPangrams(puzzleHTML),
   }
 }
 
@@ -53,9 +55,27 @@ const getOuterLetters = (centerLetter, puzzleLetters) => {
   return letters;
 }
 
+const getPuzzleDate = (puzzleHTML) => {
+  return puzzleHTML.match(/src="pics\/(20\d*)/)[1];
+}
+
 const getPointsNeededForGenius = (puzzleHTML) => {
   return Number(puzzleHTML.match(/Points Needed for Genius: (\d*)/)[1]);
 }
+
+const getMaximumPuzzleScore = (puzzleHTML) => {
+  return Number(puzzleHTML.match(/Maximum Puzzle Score: (\d*)/)[1]);
+}
+
+const getNumberOfAnswers = (puzzleHTML) => {
+  return Number(puzzleHTML.match(/Number of Answers: (\d*)/)[1]);
+}
+
+const getNumberOfPangrams = (puzzleHTML) => {
+  return Number(puzzleHTML.match(/Number of Pangrams: (\d*)/)[1]);
+}
+
+
 
 module.exports = {
   parsePuzzleData
