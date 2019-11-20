@@ -3,6 +3,7 @@ const axios = require('axios');
 const moment = require('moment');
 const { parsePuzzleData } = require('./src/helpers/puzzleDataParser');
 const express = require('express');
+const http = require('http');
 const app = express();
 
 const fetchAndStorePuzzle = (db) => {
@@ -45,7 +46,8 @@ MongoClient.connect(url, function(err, client) {
 
   const db = client.db(dbName);
   
-  app.listen(8080, '127.0.0.1');
+  http.createServer(app).listen(8080);
+  // app.listen(8080, '127.0.0.1');
   
   app.get('/puzzles/:puzzleDate', (req, res) => {
     const puzzleDate = req.params.puzzleDate;
