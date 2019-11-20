@@ -2,6 +2,8 @@ const { Worker, Scheduler, Queue } = require('node-resque');
 const axios = require('axios');
 const moment = require('moment');
 const { parsePuzzleData } = require('./src/helpers/puzzleDataParser');
+const express = require('express');
+const app = express();
 
 const fetchAndStorePuzzle = (db) => {
   const currentDay = moment().format('YYYYMMDD');
@@ -43,7 +45,29 @@ MongoClient.connect(url, function(err, client) {
 
   const db = client.db(dbName);
   
-  boot(db);
+  app.listen(8080, '127.0.0.1');
+  
+  app.get('/puzzles/:puzzleDate', (req, res) => {
+    const puzzleDate = req.params.puzzleDate;
+    
+    db.collection('puzzles').findOne({ puzzleDate }, function(err, puzzleData) {
+      if (err) { 
+        console.log(err); 
+        res.status(500).send({ error: `Error while looking up puzzle data for date provided: ${puzzleDate}` });
+        return;
+      }
+      
+      if (!puzzleData) {
+        res.status(404).send({ error: `No puzzle data found for date: ${puzzleDate}` });
+        return;
+      }
+      
+      console.log(`Returning ${puzzleData.puzzleDate}`);
+      return res.json(puzzleData);
+    });
+  });
+  
+  // boot(db);
 
   // client.close();
 });
