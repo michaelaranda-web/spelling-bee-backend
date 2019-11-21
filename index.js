@@ -8,9 +8,10 @@ const express = require('express');
 const http = require('http');
 const https = require('https');
 
-const privateKey  = fs.readFileSync('sslcert/key.pem', 'utf8');
-const certificate = fs.readFileSync('sslcert/cert.pem', 'utf8');
-const credentials = {key: privateKey, cert: certificate};
+const privateKey  = fs.readFileSync('sslcert/key.pem');
+const certificate = fs.readFileSync('sslcert/cert.pem');
+const passphrase = 'spellingbee';
+const credentials = {key: privateKey, cert: certificate, passphrase};
 
 const app = express();
 
@@ -56,7 +57,7 @@ MongoClient.connect(url, function(err, client) {
   
   console.log("process.env.NODE_ENV: ", process.env.NODE_ENV)
   const httpsPort = process.env.NODE_ENV === 'production' ? 443 : 8443;
-  https.createServer(app, credentials).listen(httpsPort);
+  https.createServer(credentials, app).listen(httpsPort);
   
   app.get('/puzzles/:puzzleDate', (req, res) => {
     const puzzleDate = req.params.puzzleDate;
