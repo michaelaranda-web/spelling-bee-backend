@@ -1,3 +1,4 @@
+const fs = require('fs');
 const { Worker, Scheduler, Queue } = require('node-resque');
 const schedule = require("node-schedule");
 const axios = require('axios');
@@ -5,6 +6,12 @@ const moment = require('moment');
 const { parsePuzzleData } = require('./src/helpers/puzzleDataParser');
 const express = require('express');
 const http = require('http');
+const https = require('https');
+
+const privateKey  = fs.readFileSync('sslcert/key.pem', 'utf8');
+const certificate = fs.readFileSync('sslcert/cert.pem', 'utf8');
+const credentials = {key: privateKey, cert: certificate};
+
 const app = express();
 
 const fetchAndStorePuzzle = (db, date) => {
@@ -46,7 +53,10 @@ MongoClient.connect(url, function(err, client) {
   const db = client.db(dbName);
   
   http.createServer(app).listen(8080);
-  // app.listen(8080, '127.0.0.1');
+  
+  console.log("process.env.NODE_ENV: ", process.env.NODE_ENV)
+  const httpsPort = process.env.NODE_ENV === 'production' ? 443 : 8443;
+  https.createServer(app, credentials).listen(httpsPort);
   
   app.get('/puzzles/:puzzleDate', (req, res) => {
     const puzzleDate = req.params.puzzleDate;
