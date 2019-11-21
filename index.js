@@ -56,7 +56,8 @@ MongoClient.connect(url, function(err, client) {
   http.createServer(app).listen(8080);
   
   console.log("process.env.NODE_ENV: ", process.env.NODE_ENV)
-  const httpsPort = process.env.NODE_ENV === 'production' ? 443 : 8443;
+  const httpsPort = process.env.NODE_ENV === 'production' ? 443 : 8443; // nothing special about 8443 as far as I know, just a placeholder
+                                                                        // ^ preview works for both http and https regardless of value
   https.createServer(credentials, app).listen(httpsPort);
   
   app.get('/puzzles/:puzzleDate', (req, res) => {
