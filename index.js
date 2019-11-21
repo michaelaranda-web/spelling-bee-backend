@@ -1,4 +1,5 @@
 const { Worker, Scheduler, Queue } = require('node-resque');
+const schedule = require("node-schedule");
 const axios = require('axios');
 const moment = require('moment');
 const { parsePuzzleData } = require('./src/helpers/puzzleDataParser');
@@ -6,10 +7,8 @@ const express = require('express');
 const http = require('http');
 const app = express();
 
-const fetchAndStorePuzzle = (db) => {
-  const currentDay = moment().format('YYYYMMDD');
-  
-  axios.get(`https://nytbee.com/Bee_${currentDay}.html`)
+const fetchAndStorePuzzle = (db, date) => {
+  axios.get(`https://nytbee.com/Bee_${date}.html`)
     .then((response) => {
       const puzzleHTML= response.data;
       const puzzleData = parsePuzzleData(puzzleHTML);
@@ -23,7 +22,7 @@ const fetchAndStorePuzzle = (db) => {
     })
     .catch((error) => {
       if (error.status === 404) {
-        console.log(`Could not find puzzle for ${currentDay}`)
+        console.log(`Could not find puzzle for ${date}`)
       } else {
         console.log(error.message);
       }
@@ -69,7 +68,7 @@ MongoClient.connect(url, function(err, client) {
     });
   });
   
-  // boot(db);
+  boot(db);
 
   // client.close();
 });
@@ -94,25 +93,11 @@ async function boot(db) {
   // DEFINE YOUR WORKER TASKS //
   // ///////////////////////////
  
-  let jobsToComplete = 0;
- 
   const jobs = {
     puzzleFetchAndStore: {
-      perform: () => fetchAndStorePuzzle(db)
+      perform: (date) => fetchAndStorePuzzle(db, date)
     },
   };
- 
-  // just a helper for this demo
-  async function tryShutdown() {
-    if (jobsToComplete === 0) {
-      await new Promise(resolve => {
-        setTimeout(resolve, 500);
-      });
-      await scheduler.end();
-      await worker.end();
-      process.exit();
-    }
-  }
  
   // /////////////////
   // START A WORKER //
@@ -124,6 +109,16 @@ async function boot(db) {
   );
   await worker.connect();
   worker.start();
+  
+  // //////////////////////
+  // CONNECT TO A QUEUE //
+  // //////////////////////
+  
+  const queue = new Queue({ connection: connectionDetails }, jobs);
+  queue.on("error", function(error) {
+    console.log(error);
+  });
+  await queue.connect();
  
   // ////////////////////
   // START A SCHEDULER //
@@ -132,6 +127,15 @@ async function boot(db) {
   const scheduler = new Scheduler({ connection: connectionDetails });
   await scheduler.connect();
   scheduler.start();
+  
+  schedule.scheduleJob("0 */15 * ? * *", async () => {
+  // attempt to fetch current day's puzzle evert 15 minutes
+  if (scheduler.master) {
+    const currentDay = moment().format('YYYYMMDD');
+    console.log(`>>> Attempting to fetch puzzle data for ${currentDay}`);
+    await queue.enqueue("puzzles", "puzzleFetchAndStore", [currentDay]);
+  }
+});
  
   // //////////////////////
   // REGESTER FOR EVENTS //
@@ -143,21 +147,21 @@ async function boot(db) {
   worker.on("end", () => {
     console.log("worker ended");
   });
-  worker.on("cleaning_worker", (worker, pid) => {
-    console.log(`cleaning old worker ${worker}`);
-  });
-  worker.on("poll", queue => {
-    console.log(`worker polling ${queue}`);
-  });
-  worker.on("ping", time => {
-    console.log(`worker check in @ ${time}`);
-  });
+  // worker.on("cleaning_worker", (worker, pid) => {
+  //   console.log(`cleaning old worker ${worker}`);
+  // });
+  // worker.on("poll", queue => {
+  //   console.log(`worker polling ${queue}`);
+  // });
+  // worker.on("ping", time => {
+  //   console.log(`worker check in @ ${time}`);
+  // });
   worker.on("job", (queue, job) => {
     console.log(`working job ${queue} ${JSON.stringify(job)}`);
   });
-  worker.on("reEnqueue", (queue, job, plugin) => {
-    console.log(`reEnqueue job (${plugin}) ${queue} ${JSON.stringify(job)}`);
-  });
+  // worker.on("reEnqueue", (queue, job, plugin) => {
+  //   console.log(`reEnqueue job (${plugin}) ${queue} ${JSON.stringify(job)}`);
+  // });
   worker.on("success", (queue, job, result) => {
     console.log(`job success ${queue} ${JSON.stringify(job)} >> ${result}`);
   });
@@ -167,9 +171,9 @@ async function boot(db) {
   worker.on("error", (error, queue, job) => {
     console.log(`error ${queue} ${JSON.stringify(job)}  >> ${error}`);
   });
-  worker.on("pause", () => {
-    console.log("worker paused");
-  });
+  // worker.on("pause", () => {
+  //   console.log("worker paused");
+  // });
  
   scheduler.on("start", () => {
     console.log("scheduler started");
@@ -177,36 +181,24 @@ async function boot(db) {
   scheduler.on("end", () => {
     console.log("scheduler ended");
   });
-  scheduler.on("poll", () => {
-    console.log("scheduler polling");
-  });
-  scheduler.on("master", state => {
-    console.log("scheduler became master");
-  });
-  scheduler.on("error", error => {
-    console.log(`scheduler error >> ${error}`);
-  });
-  scheduler.on("cleanStuckWorker", (workerName, errorPayload, delta) => {
-    console.log(
-      `failing ${workerName} (stuck for ${delta}s) and failing job ${errorPayload}`
-    );
-  });
-  scheduler.on("workingTimestamp", timestamp => {
-    console.log(`scheduler working timestamp ${timestamp}`);
-  });
-  scheduler.on("transferredJob", (timestamp, job) => {
-    console.log(`scheduler enquing job ${timestamp} >> ${JSON.stringify(job)}`);
-  });
- 
-  // //////////////////////
-  // CONNECT TO A QUEUE //
-  // //////////////////////
- 
-  const queue = new Queue({ connection: connectionDetails }, jobs);
-  queue.on("error", function(error) {
-    console.log(error);
-  });
-  await queue.connect();
-  await queue.enqueue("puzzles", "puzzleFetchAndStore", []);
-  jobsToComplete = 1;
+  // scheduler.on("poll", () => {
+  //   console.log("scheduler polling");
+  // });
+  // scheduler.on("master", state => {
+  //   console.log("scheduler became master");
+  // });
+  // scheduler.on("error", error => {
+  //   console.log(`scheduler error >> ${error}`);
+  // });
+  // scheduler.on("cleanStuckWorker", (workerName, errorPayload, delta) => {
+  //   console.log(
+  //     `failing ${workerName} (stuck for ${delta}s) and failing job ${errorPayload}`
+  //   );
+  // });
+  // scheduler.on("workingTimestamp", timestamp => {
+  //   console.log(`scheduler working timestamp ${timestamp}`);
+  // });
+  // scheduler.on("transferredJob", (timestamp, job) => {
+  //   console.log(`scheduler enquing job ${timestamp} >> ${JSON.stringify(job)}`);
+  // });
 }
