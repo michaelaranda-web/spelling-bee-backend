@@ -15,26 +15,41 @@ const credentials = {key: privateKey, cert: certificate, passphrase};
 
 const app = express();
 
-const fetchAndStorePuzzle = (db, date) => {
-  axios.get(`https://nytbee.com/Bee_${date}.html`)
-    .then((response) => {
-      const puzzleHTML= response.data;
-      const puzzleData = parsePuzzleData(puzzleHTML);
-      
-      db.collection('puzzles').insertOne(puzzleData, function(err, r) {
-        assert.equal(null, err);
-        assert.equal(1, r.insertedCount);
-        
-        console.log(`Successfully saved puzzle data for ${puzzleData.puzzleDate}`);
-      });
-    })
-    .catch((error) => {
-      if (error.status === 404) {
-        console.log(`Could not find puzzle for ${date}`)
-      } else {
-        console.log(error.message);
-      }
-    });
+const fetchAndStorePuzzle = async (db, date) => {
+  db.collection('puzzles').findOne({ puzzleDate: date }, (err, puzzleData) => {
+    if (err) { 
+      console.log(`Error while checking for existing puzzle data: ${err}`); 
+    }
+    
+    if (puzzleData) { 
+      console.log(`Puzzle data already exists for ${date}`); 
+      return; 
+    } else {
+      axios.get(`https://nytbee.com/Bee_${date}.html`)
+        .then((response) => {
+          const puzzleHTML= response.data;
+          const puzzleData = parsePuzzleData(puzzleHTML);
+          
+          db.collection('puzzles').updateOne(
+            { puzzleDate: puzzleData.puzzleDate },
+            { $set: puzzleData },
+            { upsert: true }, // insert the document if it does not exist
+            (err, r) => {
+              assert.equal(null, err);
+              
+              console.log(`Successfully saved puzzle data for ${puzzleData.puzzleDate}`);
+            }
+          );
+        })
+        .catch((error) => {
+          if (error.status === 404) {
+            console.log(`Puzzle data does not exist for ${date}`)
+          } else {
+            console.log(`Error while fetching puzzle data for ${date}: ${error.message}`);
+          }
+        });
+    }
+  });
 }
 
 const MongoClient = require('mongodb').MongoClient;
@@ -49,7 +64,7 @@ const dbName = 'spelling-bee';
 // Use connect method to connect to the server
 MongoClient.connect(url, function(err, client) {
   assert.equal(null, err);
-  console.log("Connected successfully to server");
+  console.log(`[${moment()}] Connected successfully to server`);
 
   const db = client.db(dbName);
   
@@ -65,7 +80,7 @@ MongoClient.connect(url, function(err, client) {
     
     db.collection('puzzles').findOne({ puzzleDate }, function(err, puzzleData) {
       if (err) { 
-        console.log(err); 
+        console.log(`Error while retrieving puzzle data for ${puzzleDate}: ${err}`); 
         res.status(500).send({ error: `Error while looking up puzzle data for date provided: ${puzzleDate}` });
         return;
       }
@@ -141,7 +156,7 @@ async function boot(db) {
   scheduler.start();
   
   schedule.scheduleJob("0 */15 * ? * *", async () => {
-  // attempt to fetch current day's puzzle evert 15 minutes
+  // attempt to fetch latest puzzle every 15 minutes
   if (scheduler.master) {
     const currentDay = moment().format('YYYYMMDD');
     console.log(`>>> Attempting to fetch puzzle data for ${currentDay}`);

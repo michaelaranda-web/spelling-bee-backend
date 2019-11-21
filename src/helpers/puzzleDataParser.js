@@ -72,7 +72,10 @@ const getNumberOfAnswers = (puzzleHTML) => {
 }
 
 const getNumberOfPangrams = (puzzleHTML) => {
-  return Number(puzzleHTML.match(/Number of Pangrams: (\d*)/)[1]);
+  let matchNumPangramsString = puzzleHTML.match(/Number of Pangrams: (\d*)/);
+  if (matchNumPangramsString) { return Number(matchNumPangramsString[1]) };
+  
+  return 1; // there is always at least one pangram
 }
 
 
