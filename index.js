@@ -95,6 +95,22 @@ MongoClient.connect(url, function(err, client) {
     });
   });
   
+  app.get('/random_puzzle', (req, res) => {
+    db.collection('puzzles').aggregate([{ $sample: { size: 1 } }], function(err, aggregateCursor) {
+      if (err) { 
+        console.log(`Error while retrieving random puzzle data: ${err}`); 
+        res.status(500).send({ error: "Error while retrieving random puzzle data" });
+        return;
+      }
+      
+      aggregateCursor.next().then((puzzleData) => {
+        console.log(`Returning random puzzle data: ${puzzleData.puzzleDate}`);
+        res.json(puzzleData);
+      })
+      
+    });
+  });
+  
   boot(db);
 
   // client.close();
