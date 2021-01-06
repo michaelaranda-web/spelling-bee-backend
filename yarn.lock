@@ -1732,9 +1732,9 @@ supports-color@^5.3.0:
     has-flag "^3.0.0"
 
 systeminformation@^4.14.11:
-  version "4.15.3"
-  resolved "https://registry.yarnpkg.com/systeminformation/-/systeminformation-4.15.3.tgz#639cdc224b5c3811f1a0bfba33f869bbc6fb930f"
-  integrity sha512-Fx2ARGHtLl2/xLeNoTR8/doXSxUXuAzIN+dyCK9O43j/UETLBt77yTEbTxmYsVD47PYjX1iQTdcY41CZckY+zg==
+  version "4.34.2"
+  resolved "https://registry.yarnpkg.com/systeminformation/-/systeminformation-4.34.2.tgz#2fe6c5c25478990549443a69d8300eb3010b5560"
+  integrity sha512-1LynQMla38gIjzyupKBnBLIo4B0TQf3vdhs2bjKPtN02EymuSWpoAM1KX/6+gtFLVmn91MfllE3wSVGQcVTHDw==
 
 thunkify@^2.1.2:
   version "2.1.2"
