@@ -44,6 +44,15 @@ const getCenterLetter = (validWordsList, puzzleLetters) => {
     }
   }
   
+  //prioritize consonants over vowels in a tie - vowels typically aren't the center letter
+  if (centerLetterCandidates.length > 0) {
+    for (const letter of centerLetterCandidates) {
+      if (["a","e","i","o","u"].indexOf(letter) === -1) {
+        return letter;
+      }
+    }
+  }
+  
   return centerLetterCandidates[0];
 }
 
